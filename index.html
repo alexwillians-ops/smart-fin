@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Empréstimo — Price & SAC</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg:#141414; --surface:#1e1e1e; --surface2:#272727; --surface3:#303030;
+  --border:rgba(255,255,255,0.08); --border2:rgba(255,255,255,0.14);
+  --text:#e8e6e0; --text2:#a09e98; --text3:#6a6864;
+  --blue:#4A90D9; --blue-bg:#0d2035; --blue-text:#85B7EB;
+  --red:#E06060; --green:#6AAF36; --amber:#D4892A;
+  --radius:10px; --radius-sm:7px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+
+header{background:var(--surface);border-bottom:0.5px solid var(--border);padding:14px 32px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+header .logo{width:32px;height:32px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:700}
+header h1{font-size:16px;font-weight:600}
+header .sub{font-size:12px;color:var(--text3);margin-left:4px}
+.header-actions{margin-left:auto;display:flex;gap:8px}
+
+.container{max-width:1160px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:16px}
+
+.section{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:20px 24px}
+.section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:16px}
+
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.grid3r{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+
+input[type=number],input[type=text],select{
+  padding:8px 10px;border:0.5px solid var(--border2);border-radius:var(--radius-sm);
+  background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit;
+  outline:none;transition:border-color .15s;width:100%
+}
+input:focus,select:focus{border-color:var(--blue)}
+
+button{
+  padding:8px 16px;border:0.5px solid var(--border2);border-radius:var(--radius-sm);
+  background:transparent;color:var(--text);font-size:13px;font-family:inherit;
+  cursor:pointer;font-weight:500;transition:background .12s,border-color .12s,transform .1s;white-space:nowrap
+}
+button:hover{background:var(--surface2);border-color:var(--blue)}
+button:active{transform:scale(.98)}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{background:#3278c0;border-color:#3278c0}
+.btn-danger{color:var(--red);border-color:rgba(224,96,96,.3)}
+.btn-danger:hover{background:rgba(224,96,96,.1);border-color:var(--red)}
+.btn-sm{padding:4px 9px;font-size:11px}
+.btn-ghost{color:var(--text2);font-size:12px;padding:5px 12px}
+.btn-ghost:hover{color:var(--text)}
+
+.metric{background:var(--surface2);border-radius:var(--radius-sm);padding:14px 16px;text-align:center}
+.metric .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:6px}
+.metric .val{font-size:16px;font-weight:700}
+.metric .val.red{color:var(--red)}
+.metric .val.blue{color:var(--blue)}
+.metric .val.green{color:var(--green)}
+.metric .val.amber{color:var(--amber)}
+
+.seg-ctrl{display:flex;border:0.5px solid var(--border2);border-radius:var(--radius-sm);overflow:hidden;width:fit-content}
+.seg-btn{padding:6px 16px;font-size:12px;border:none;background:transparent;color:var(--text2);cursor:pointer;font-weight:500;border-radius:0;transition:background .1s,color .1s}
+.seg-btn.active{background:var(--surface2);color:var(--text)}
+.seg-btn:hover:not(.active){background:var(--bg)}
+
+.amort-box{background:var(--surface2);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:16px}
+
+.amort-list{display:flex;flex-direction:column;gap:6px;margin-top:12px;max-height:200px;overflow-y:auto}
+.amort-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface3);border:0.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px}
+.ai-num{min-width:32px;text-align:center;font-weight:700;color:var(--blue);font-size:11px;background:var(--blue-bg);padding:2px 4px;border-radius:4px}
+.ai-label{flex:1;color:var(--text2)}
+.ai-val{font-weight:700;color:var(--green)}
+.ai-modo{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;background:var(--blue-bg);color:var(--blue-text)}
+.ai-modo.valor{background:rgba(106,175,54,.12);color:#6AAF36}
+.amort-empty{text-align:center;color:var(--text3);font-size:12px;padding:14px}
+
+.tbl-wrap{overflow:auto;max-height:380px;border:0.5px solid var(--border);border-radius:var(--radius-sm)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{position:sticky;top:0;background:var(--surface2);padding:9px 12px;text-align:right;font-weight:700;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.05em;border-bottom:0.5px solid var(--border);white-space:nowrap}
+thead th:first-child{text-align:center}
+tbody td{padding:6px 12px;text-align:right;border-bottom:0.5px solid var(--border);color:var(--text);white-space:nowrap}
+tbody td:first-child{text-align:center;color:var(--text3)}
+tbody tr:hover{background:var(--surface2)}
+tbody tr.amort-row{background:#0d2035}
+tbody tr.amort-row td{color:#85B7EB}
+tbody tr:last-child td{border-bottom:none}
+
+.badge{display:inline-block;font-size:9px;padding:2px 5px;border-radius:3px;background:var(--blue-bg);color:var(--blue-text);margin-left:4px;font-weight:700;vertical-align:middle}
+
+.info-result{font-size:12px;color:var(--text2);margin-top:12px;padding:10px 14px;background:var(--blue-bg);border-radius:var(--radius-sm);display:none;border-left:3px solid var(--blue)}
+
+.legend-row{display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--text3)}
+.legend-row span{display:flex;align-items:center;gap:5px}
+.ldot{width:14px;height:3px;border-radius:2px;display:inline-block}
+
+.row-flex{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.header-row .section-title{margin:0}
+
+.warn{font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(212,137,42,.15);color:var(--amber);font-weight:600}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;overflow-y:auto;padding:24px}
+.modal-overlay.open{display:flex;align-items:flex-start;justify-content:center}
+.modal{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);width:100%;max-width:940px;padding:28px;position:relative}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1;padding:4px}
+.modal-close:hover{color:var(--text)}
+.modal h2{font-size:17px;font-weight:700;margin-bottom:4px}
+.modal-sub{font-size:12px;color:var(--text3);margin-bottom:18px}
+
+.rtabs{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.rtab{padding:5px 14px;font-size:12px;border:0.5px solid var(--border2);border-radius:var(--radius-sm);background:transparent;color:var(--text2);cursor:pointer;transition:all .12s}
+.rtab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.rtab:hover:not(.active){border-color:var(--blue);color:var(--text)}
+.rpanel{display:none}
+.rpanel.active{display:block}
+
+.rcards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.rcard{background:var(--surface2);border-radius:var(--radius-sm);padding:12px 16px}
+.rcard .rl{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:4px}
+.rcard .rv{font-size:15px;font-weight:700}
+.rv.red{color:var(--red)}.rv.green{color:var(--green)}.rv.blue{color:var(--blue)}.rv.amber{color:var(--amber)}
+
+.rsec{margin-bottom:18px}
+.rsec h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:10px;padding-bottom:6px;border-bottom:0.5px solid var(--border)}
+.rtbl-wrap{overflow-x:auto;border:0.5px solid var(--border);border-radius:var(--radius-sm)}
+.rtbl-wrap.scroll{max-height:300px;overflow-y:auto}
+.rtbl{width:100%;border-collapse:collapse;font-size:11px}
+.rtbl th{background:var(--surface2);padding:7px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:0.5px solid var(--border);position:sticky;top:0}
+.rtbl th:first-child{text-align:left}
+.rtbl td{padding:6px 10px;text-align:right;border-bottom:0.5px solid var(--border);color:var(--text)}
+.rtbl td:first-child{text-align:left;color:var(--text2)}
+.rtbl tr:last-child td{border-bottom:none}
+.rtbl tr.hi td{color:var(--blue-text);background:var(--blue-bg)}
+.rtbl tr.total td{font-weight:700;border-top:0.5px solid var(--border2)}
+
+.chart-wrap{position:relative;width:100%;height:240px}
+.chart-sm{position:relative;width:100%;height:190px}
+
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:0.5px solid var(--border)}
+
+@media(max-width:700px){
+  .grid3,.grid4,.grid5{grid-template-columns:1fr 1fr}
+  .container{padding:12px}
+  header{padding:12px 16px}
+  .header-actions{display:none}
+  .rcards{grid-template-columns:1fr 1fr}
+}
+
+/* Indicador de estado salvo */
+#indicador-salvo {
+  font-size:11px; color:var(--green); opacity:0;
+  transition:opacity .4s; display:flex; align-items:center; gap:4px;
+  pointer-events:none;
+}
+#indicador-salvo svg { width:13px; height:13px; }
+
+/* Banner de sessão restaurada */
+#banner-restaurado {
+  display:none; align-items:center; gap:12px;
+  background:var(--blue-bg); border:0.5px solid var(--blue);
+  border-radius:var(--radius-sm); padding:10px 16px;
+  font-size:12px; color:var(--blue-text);
+  transition:opacity .4s;
+}
+#banner-restaurado strong { color:var(--blue); }
+#banner-restaurado .br-close { margin-left:auto; cursor:pointer; color:var(--text3); background:none; border:none; font-size:15px; padding:0; }
+#banner-restaurado .br-close:hover { color:var(--text); background:none; border:none; }
+
+@media print{
+  body{background:#fff!important;color:#000!important}
+  header,.no-print{display:none!important}
+  .modal-overlay{display:block!important;position:static!important;background:none!important;padding:0!important}
+  .modal{border:none!important;padding:0!important;max-width:100%!important;background:#fff!important}
+  .modal-close,.modal-footer,.rtabs{display:none!important}
+  .rpanel{display:block!important}
+  .rcard{background:#f5f5f5!important;border:1px solid #ddd!important}
+  .rtbl th{background:#eee!important;color:#333!important}
+  .rv.red{color:#900!important}.rv.green{color:#360!important}.rv.blue{color:#036!important}
+  .rtbl tr.hi td{background:#e8f0fa!important;color:#036!important}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">R$</div>
+  <h1>Simulador de Empréstimo</h1>
+  <span class="sub">Price &amp; SAC · TR</span>
+  <div class="header-actions no-print" style="display:flex;align-items:center;gap:12px">
+    <span id="indicador-salvo">
+      <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 8.5l3.5 3.5 6.5-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Salvo
+    </span>
+    <button class="btn-ghost" onclick="novoCenario()" title="Limpar e iniciar novo cenário">&#43; Novo cenário</button>
+    <button class="btn-ghost" onclick="abrirRelatorio('resumo')">&#128196; Relatório de Gestão</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Banner de sessão restaurada -->
+  <div id="banner-restaurado">
+    <span>&#128190;</span>
+    <span><strong>Sessão restaurada.</strong> Seus parâmetros e amortizações foram recuperados automaticamente.</span>
+    <button class="br-close" onclick="this.parentElement.style.display='none'">&#x2715;</button>
+  </div>
+
+  <!-- PARÂMETROS -->
+  <div class="section">
+    <div class="section-title">Parâmetros do empréstimo</div>
+    <div class="grid3" style="margin-bottom:14px">
+      <div class="field"><label>Valor do empréstimo (R$)</label><input type="number" id="principal" value="300000" min="1000" step="1000"></div>
+      <div class="field"><label>Prazo (meses) — máx. 500</label><input type="number" id="prazo" value="360" min="1" max="500" step="1"></div>
+      <div class="field"><label>Taxa de juros mensal (%)</label><input type="number" id="taxa" value="0.80" min="0.01" max="15" step="0.01"></div>
+    </div>
+    <div class="grid3">
+      <div class="field">
+        <label>Sistema de amortização</label>
+        <select id="sistema">
+          <option value="price">Price — parcela fixa</option>
+          <option value="sac">SAC — amortização fixa</option>
+        </select>
+      </div>
+      <div class="field"><label>TR mensal estimada (%)</label><input type="number" id="tr" value="0.10" min="0" max="5" step="0.01"></div>
+      <div class="field" style="justify-content:flex-end">
+        <button class="btn-primary" onclick="calcular()" style="width:100%;height:36px">&#9654; Calcular</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AMORTIZAÇÕES MÚLTIPLAS -->
+  <div class="section">
+    <div class="header-row">
+      <div class="section-title">Amortizações extraordinárias</div>
+      <span class="warn" id="aviso-intervalo" style="display:none">⚠ Intervalo mínimo de 24 meses entre amortizações</span>
+    </div>
+    <div class="amort-box">
+      <div class="row-flex">
+        <span style="font-size:12px;color:var(--text2)">Reduzir:</span>
+        <div class="seg-ctrl">
+          <button class="seg-btn active" id="modo-prazo" onclick="setModo('prazo')">Prazo</button>
+          <button class="seg-btn" id="modo-valor" onclick="setModo('valor')">Valor da parcela</button>
+        </div>
+      </div>
+      <div class="grid4" style="margin-bottom:4px">
+        <div class="field"><label>Na parcela nº</label><input type="number" id="amort-parcela" value="60" min="1" step="1"></div>
+        <div class="field"><label>Valor (R$)</label><input type="number" id="amort-valor" value="50000" min="1" step="1000"></div>
+        <div class="field" style="justify-content:flex-end"><button onclick="adicionarAmort()" style="height:36px;width:100%">+ Adicionar</button></div>
+        <div class="field" style="justify-content:flex-end"><button onclick="limparAmorts()" class="btn-danger" style="height:36px;width:100%">✕ Limpar tudo</button></div>
+      </div>
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:12px 0 6px">Agenda de amortizações</div>
+      <div class="amort-list" id="amort-list">
+        <div class="amort-empty" id="amort-empty">Nenhuma amortização adicionada. Intervalo mínimo: 24 meses.</div>
+      </div>
+    </div>
+    <div id="amort-resultado" class="info-result"></div>
+  </div>
+
+  <!-- MÉTRICAS -->
+  <div class="section">
+    <div class="header-row">
+      <div class="section-title">Resumo do financiamento</div>
+      <button class="btn-ghost no-print" onclick="abrirRelatorio('resumo')" style="font-size:11px;padding:5px 12px">&#128202; Relatório completo</button>
+    </div>
+    <div class="grid5">
+      <div class="metric"><div class="lbl">1ª parcela</div><div class="val blue" id="m-parcela1">—</div></div>
+      <div class="metric"><div class="lbl">Prazo efetivo</div><div class="val" id="m-prazo">—</div></div>
+      <div class="metric"><div class="lbl">Total pago</div><div class="val red" id="m-total">—</div></div>
+      <div class="metric"><div class="lbl">Total juros</div><div class="val red" id="m-juros">—</div></div>
+      <div class="metric"><div class="lbl">Total TR</div><div class="val amber" id="m-tr">—</div></div>
+    </div>
+  </div>
+
+  <!-- GRÁFICO -->
+  <div class="section">
+    <div class="header-row">
+      <div class="section-title">Evolução do saldo</div>
+      <span style="font-size:12px;color:var(--text3)" id="prazo-info"></span>
+    </div>
+    <div class="chart-wrap"><canvas id="grafico" role="img" aria-label="Evolução do saldo devedor"></canvas></div>
+    <div class="legend-row">
+      <span><span class="ldot" style="background:#4A90D9"></span>Saldo devedor</span>
+      <span><span class="ldot" style="background:transparent;border-top:2px dashed #E06060;height:0;margin-top:1px"></span>Juros</span>
+      <span><span class="ldot" style="background:transparent;border-top:2px dashed #6AAF36;height:0;margin-top:1px"></span>Amortização</span>
+    </div>
+  </div>
+
+  <!-- TABELA -->
+  <div class="section">
+    <div class="header-row">
+      <div class="section-title">Tabela de parcelas</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:11px;color:var(--text3)" id="total-parcelas"></span>
+        <button class="btn-ghost no-print" onclick="abrirRelatorio('anual')" style="font-size:11px;padding:5px 12px">Relatório anual</button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="text-align:center">Nº</th>
+            <th>Saldo anterior</th>
+            <th>TR (R$)</th>
+            <th>Juros</th>
+            <th>Amort. normal</th>
+            <th>Amort. extra</th>
+            <th>Total pago</th>
+            <th>Saldo restante</th>
+          </tr>
+        </thead>
+        <tbody id="tabela-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL DE RELATÓRIO -->
+<div class="modal-overlay" id="modal-overlay" onclick="fecharModalFora(event)">
+  <div class="modal">
+    <button class="modal-close no-print" onclick="fecharRelatorio()">&#x2715;</button>
+    <h2 id="modal-titulo">Relatório de Gestão</h2>
+    <div class="modal-sub" id="modal-sub"></div>
+
+    <div class="rtabs no-print">
+      <button class="rtab" onclick="trocarAba('resumo')">Resumo executivo</button>
+      <button class="rtab" onclick="trocarAba('anual')">Evolução anual</button>
+      <button class="rtab" onclick="trocarAba('amortizacoes')">Amortizações</button>
+      <button class="rtab" onclick="trocarAba('comparativo')">Comparativo</button>
+    </div>
+
+    <!-- Resumo executivo -->
+    <div class="rpanel" id="panel-resumo">
+      <div class="rcards" id="rg-cards"></div>
+      <div class="rsec">
+        <h4>Composição do custo total</h4>
+        <div class="chart-sm"><canvas id="grafico-pizza" role="img" aria-label="Composição do custo"></canvas></div>
+      </div>
+      <div class="rsec">
+        <h4>Indicadores financeiros</h4>
+        <div class="rtbl-wrap"><table class="rtbl" id="tbl-indicadores"></table></div>
+      </div>
+    </div>
+
+    <!-- Evolução anual -->
+    <div class="rpanel" id="panel-anual">
+      <div class="rsec">
+        <h4>Resumo por ano</h4>
+        <div class="rtbl-wrap scroll"><table class="rtbl" id="tbl-anual"></table></div>
+      </div>
+    </div>
+
+    <!-- Amortizações -->
+    <div class="rpanel" id="panel-amortizacoes">
+      <div class="rsec">
+        <h4>Agenda e impacto de cada amortização</h4>
+        <div class="rtbl-wrap"><table class="rtbl" id="tbl-amortizacoes"></table></div>
+      </div>
+      <div class="rsec">
+        <h4>Saldo devedor — com vs. sem amortizações</h4>
+        <div class="chart-sm"><canvas id="grafico-comp" role="img" aria-label="Saldo com e sem amortizações"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Comparativo -->
+    <div class="rpanel" id="panel-comparativo">
+      <div class="rsec">
+        <h4>Cenários: com e sem amortizações extraordinárias</h4>
+        <div class="rcards" id="rg-comp"></div>
+      </div>
+      <div class="rsec">
+        <h4>Saldo devedor por ano — comparativo</h4>
+        <div class="rtbl-wrap scroll"><table class="rtbl" id="tbl-comp"></table></div>
+      </div>
+    </div>
+
+    <div class="modal-footer no-print">
+      <button onclick="window.print()">&#128438; Imprimir / PDF</button>
+      <button onclick="fecharRelatorio()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Estado global ─────────────────────────────
+let graficoInst = null;
+let graficoPizza = null;
+let graficoComp  = null;
+let modoAmort    = 'prazo';
+let dadosBase    = null;
+let listaAmorts  = [];
+let ultimaTabela = [];
+
+// ── Persistência localStorage ─────────────────
+const STORAGE_KEY = 'simulador_emprestimo_v2';
+
+function salvarEstado() {
+  try {
+    const estado = {
+      params: {
+        principal: document.getElementById('principal').value,
+        prazo:     document.getElementById('prazo').value,
+        taxa:      document.getElementById('taxa').value,
+        tr:        document.getElementById('tr').value,
+        sistema:   document.getElementById('sistema').value
+      },
+      modoAmort,
+      listaAmorts
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(estado));
+    mostrarIndicadorSalvo();
+  } catch(e) { /* localStorage indisponível */ }
+}
+
+function carregarEstado() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return false;
+    const estado = JSON.parse(raw);
+
+    // Restaurar campos
+    const p = estado.params || {};
+    if(p.principal) document.getElementById('principal').value = p.principal;
+    if(p.prazo)     document.getElementById('prazo').value     = p.prazo;
+    if(p.taxa)      document.getElementById('taxa').value      = p.taxa;
+    if(p.tr)        document.getElementById('tr').value        = p.tr;
+    if(p.sistema)   document.getElementById('sistema').value   = p.sistema;
+
+    // Restaurar modo
+    if(estado.modoAmort) setModo(estado.modoAmort);
+
+    // Restaurar lista de amortizações
+    if(Array.isArray(estado.listaAmorts) && estado.listaAmorts.length > 0) {
+      listaAmorts = estado.listaAmorts;
+    }
+
+    return true;
+  } catch(e) { return false; }
+}
+
+function limparEstadoSalvo() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+}
+
+function mostrarIndicadorSalvo() {
+  const el = document.getElementById('indicador-salvo');
+  if(!el) return;
+  el.style.opacity = '1';
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.style.opacity = '0'; }, 2000);
+}
+
+// ── Formatação ────────────────────────────────
+const fmt  = v => 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtN = v => v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtK = v => {
+  const a = Math.abs(v);
+  if(a>=1e6) return 'R$ '+(v/1e6).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'M';
+  if(a>=1e3) return 'R$ '+(v/1e3).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'k';
+  return fmt(v);
+};
+
+// ── Helpers de cálculo ────────────────────────
+function calcPMT(saldo, taxa, prazo) {
+  if(taxa===0) return saldo/prazo;
+  return saldo*(taxa*Math.pow(1+taxa,prazo))/(Math.pow(1+taxa,prazo)-1);
+}
+
+// ── Modo de amortização ───────────────────────
+function setModo(m) {
+  modoAmort = m;
+  document.getElementById('modo-prazo').classList.toggle('active', m==='prazo');
+  document.getElementById('modo-valor').classList.toggle('active', m==='valor');
+}
+
+function novoCenario() {
+  if(!confirm('Iniciar novo cenário? Os dados atuais serão apagados.')) return;
+  limparEstadoSalvo();
+  listaAmorts=[];
+  renderizarLista();
+  document.getElementById('principal').value='300000';
+  document.getElementById('prazo').value='360';
+  document.getElementById('taxa').value='0.80';
+  document.getElementById('tr').value='0.10';
+  document.getElementById('sistema').value='price';
+  setModo('prazo');
+  dadosBase=null;
+  ultimaTabela=[];
+  document.getElementById('amort-resultado').style.display='none';
+  document.getElementById('tabela-body').innerHTML='';
+  document.getElementById('m-parcela1').textContent='—';
+  document.getElementById('m-prazo').textContent='—';
+  document.getElementById('m-total').textContent='—';
+  document.getElementById('m-juros').textContent='—';
+  document.getElementById('m-tr').textContent='—';
+  document.getElementById('total-parcelas').textContent='';
+  document.getElementById('prazo-info').textContent='';
+  if(graficoInst){graficoInst.destroy();graficoInst=null;}
+}
+
+// ── Gerenciar lista de amortizações ──────────
+function adicionarAmort() {
+  if(!dadosBase) { alert('Calcule o empréstimo primeiro.'); return; }
+  const parcela = parseInt(document.getElementById('amort-parcela').value);
+  const valor   = parseFloat(document.getElementById('amort-valor').value);
+  if(!parcela||parcela<1||!valor||valor<=0) { alert('Informe parcela e valor válidos.'); return; }
+
+  // Intervalo mínimo 24 meses
+  const conflito = listaAmorts.find(a => Math.abs(a.parcela-parcela)<24);
+  if(conflito) {
+    document.getElementById('aviso-intervalo').style.display='inline-block';
+    alert(`Intervalo mínimo de 24 meses entre amortizações.\nConflito com a parcela ${conflito.parcela}.`);
+    return;
+  }
+  document.getElementById('aviso-intervalo').style.display='none';
+
+  if(listaAmorts.find(a=>a.parcela===parcela)) { alert(`Já existe amortização na parcela ${parcela}.`); return; }
+
+  listaAmorts.push({parcela, valor, modo:modoAmort});
+  listaAmorts.sort((a,b)=>a.parcela-b.parcela);
+  renderizarLista();
+  recalcularComAmorts();
+  salvarEstado();
+  // Sugerir próxima parcela
+  document.getElementById('amort-parcela').value = Number(parcela)+24;
+}
+
+function removerAmort(idx) {
+  listaAmorts.splice(idx,1);
+  renderizarLista();
+  recalcularComAmorts();
+  salvarEstado();
+}
+
+function limparAmorts() {
+  if(listaAmorts.length>0 && !confirm('Remover todas as amortizações?')) return;
+  listaAmorts=[];
+  document.getElementById('aviso-intervalo').style.display='none';
+  renderizarLista();
+  recalcularComAmorts();
+  salvarEstado();
+}
+
+function renderizarLista() {
+  const container = document.getElementById('amort-list');
+  [...container.querySelectorAll('.amort-item')].forEach(e=>e.remove());
+  const empty = document.getElementById('amort-empty');
+  if(listaAmorts.length===0) { empty.style.display='block'; return; }
+  empty.style.display='none';
+  listaAmorts.forEach((a,idx)=>{
+    const div=document.createElement('div');
+    div.className='amort-item';
+    div.innerHTML=`
+      <span class="ai-num">${a.parcela}ª</span>
+      <span class="ai-label">Amortização extraordinária</span>
+      <span class="ai-val">${fmt(a.valor)}</span>
+      <span class="ai-modo ${a.modo}">${a.modo==='prazo'?'Reduz prazo':'Reduz parcela'}</span>
+      <button class="btn-sm btn-danger" onclick="removerAmort(${idx})">✕</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+// ── Cálculo da tabela — algoritmo validado numericamente ────────────
+// Modelo correto contratos brasileiros Price/SAC + TR:
+//   1. TR corrige saldo: saldoCorr = saldo*(1+TR)
+//   2. Juros sobre saldo PRÉ-TR: juros = saldo*i
+//   3. PMT com iEfetiva=(1+i)*(1+TR)-1 → quitação exata no prazo
+//   4. Amort.extra modo prazo: mantém PMT, saldo zera antes
+//   5. Amort.extra modo valor: recalcula PMT sobre saldo residual
+// ──────────────────────────────────────────────────────────────────────
+function calcularTabela(principal, prazo, taxaMensal, trMensal, sistema, amorts) {
+  const parcelas = [];
+  let saldo = principal;
+  const i   = taxaMensal;
+  const tr  = trMensal;
+  const iEf = (1+i)*(1+tr) - 1;
+
+  let pmt          = sistema==='price' ? calcPMT(principal, iEf, prazo) : 0;
+  let amortFixaSAC = sistema==='sac'   ? principal/prazo : 0;
+  let parcRestSAC  = prazo;
+
+  const amMap = {};
+  (amorts||[]).forEach(a => amMap[a.parcela] = a);
+
+  // Limite 600 para cobrir prazos longos com TR elevada
+  for(let n=1; n<=600; n++){
+    if(saldo <= 0.005) break;
+
+    // 1. TR corrige saldo
+    const trValor   = saldo * tr;
+    const saldoCorr = saldo + trValor;
+
+    // 2. Juros sobre saldo pré-TR
+    const juros = saldo * i;
+
+    // 3. Amortização normal
+    let amort, parcela;
+    if(sistema === 'price'){
+      amort = pmt - juros;
+      if(amort < 0)         amort = 0;
+      if(amort > saldoCorr) amort = saldoCorr; // última parcela quita o restante
+      parcela = juros + amort;
+    } else {
+      amort = (parcRestSAC === 1) ? saldoCorr : amortFixaSAC;
+      if(amort > saldoCorr) amort = saldoCorr;
+      parcela = juros + amort;
+      parcRestSAC = Math.max(1, parcRestSAC - 1);
+    }
+
+    let saldoDepois = Math.max(0, saldoCorr - amort);
+    let extraVal = 0, isExtra = false;
+
+    // 4. Amortização extraordinária nessa parcela
+    if(amMap[n]){
+      const ae = amMap[n];
+      isExtra  = true;
+      extraVal = Math.min(ae.valor, saldoDepois);
+      saldoDepois = Math.max(0, saldoDepois - extraVal);
+
+      if(saldoDepois > 0.005){
+        const restante = prazo - n;
+        if(sistema === 'price'){
+          if(ae.modo === 'valor' && restante > 0){
+            pmt = calcPMT(saldoDepois, iEf, restante);
+          }
+          // modo prazo: mantém PMT — saldo zera antes do prazo naturalmente
+        } else {
+          // SAC: redistribui saldo pelas parcelas restantes (ambos os modos)
+          if(restante > 0){
+            amortFixaSAC = saldoDepois / restante;
+            parcRestSAC  = restante;
+          }
+        }
+      }
+    }
+
+    parcelas.push({
+      n,
+      saldoAntes:    saldo,
+      trValor,
+      juros,
+      amort,
+      extraVal,
+      parcela,
+      saldoRestante: saldoDepois,
+      isExtra
+    });
+
+    saldo = saldoDepois;
+    if(saldo < 0.005) break;
+  }
+  return parcelas;
+}
+
+// ── Calcular (botão) ──────────────────────────
+function calcular(manterAmorts) {
+  const principal=parseFloat(document.getElementById('principal').value);
+  const prazo    =parseInt(document.getElementById('prazo').value);
+  const taxa     =parseFloat(document.getElementById('taxa').value)/100;
+  const tr       =parseFloat(document.getElementById('tr').value)/100;
+  const sistema  =document.getElementById('sistema').value;
+  if(!principal||!prazo||!taxa) return;
+  dadosBase={principal,prazo,taxa,tr,sistema};
+  if(!manterAmorts) {
+    listaAmorts=[];
+  }
+  // Sempre renderiza a lista (seja ela vazia ou restaurada do localStorage)
+  renderizarLista();
+  salvarEstado();
+  recalcularComAmorts();
+}
+
+// ── Recalcular com amortizações ───────────────
+function recalcularComAmorts() {
+  if(!dadosBase){ calcular(); return; }
+  const {principal,prazo,taxa,tr,sistema}=dadosBase;
+  ultimaTabela=calcularTabela(principal,prazo,taxa,tr,sistema,listaAmorts);
+
+  if(listaAmorts.length>0){
+    const sem      = calcularTabela(principal,prazo,taxa,tr,sistema,[]);
+    const totalSem = sem.reduce((a,p)=>a+p.parcela,0);
+    const totalCom = ultimaTabela.reduce((a,p)=>a+p.parcela,0);
+    const totalEx  = listaAmorts.reduce((a,x)=>a+x.valor,0);
+    const prazoSem = sem.length, prazoCom=ultimaTabela.length;
+    const reducao  = prazoSem-prazoCom;
+
+    // Economia real = tudo que seria pago sem amort  vs  tudo que será pago com amort (parcelas + extra)
+    // Modo prazo:  prazo cai, parcela fica igual  → economia = totalSem - (totalCom + totalEx)
+    // Modo valor:  prazo igual, parcela cai       → economia = totalSem - (totalCom + totalEx)
+    // A fórmula é a mesma — o que muda é como ela se manifesta (menos meses vs menos por mês)
+    const economia = totalSem - (totalCom + totalEx);
+
+    // Detecta modo predominante para personalizar a mensagem
+    const temPrazo = listaAmorts.some(a=>a.modo==='prazo');
+    const temValor = listaAmorts.some(a=>a.modo==='valor');
+
+    // Para modo valor, calcula a redução da parcela a partir da 1ª amort
+    let msgExtra = '';
+    if(temValor && !temPrazo){
+      const primeiraAmort = listaAmorts.find(a=>a.modo==='valor');
+      if(primeiraAmort){
+        const idxAmort = primeiraAmort.parcela;
+        const parcelaSem = sem[idxAmort]  ? sem[idxAmort].parcela  : 0;
+        const parcelaCom = ultimaTabela[idxAmort] ? ultimaTabela[idxAmort].parcela : 0;
+        const redParcela = parcelaSem - parcelaCom;
+        if(redParcela > 0.01){
+          msgExtra = ` Parcela reduzida em <strong style="color:var(--green)">${fmt(redParcela)}/mês</strong> a partir da parcela ${idxAmort+1}ª.`;
+        }
+      }
+    }
+
+    const r=document.getElementById('amort-resultado');
+    r.style.display='block';
+    r.innerHTML=`<strong>${listaAmorts.length} amortização(ões) aplicada(s).</strong>
+      Prazo ${reducao>0
+        ? `reduzido em <strong>${reducao} meses</strong> (de ${prazoSem} para ${prazoCom} meses)`
+        : `mantido em ${prazoSem} meses`}.
+      ${msgExtra}
+      Economia total estimada: <strong style="color:var(--green)">${fmt(Math.max(0,economia))}</strong>.`;
+  } else {
+    document.getElementById('amort-resultado').style.display='none';
+  }
+  renderizarResultados(ultimaTabela);
+}
+
+// ── Renderizar resultados ─────────────────────
+function renderizarResultados(parcelas) {
+  const totalPago =parcelas.reduce((a,p)=>a+p.parcela,0);
+  const totalJuros=parcelas.reduce((a,p)=>a+p.juros,0);
+  const totalTR   =parcelas.reduce((a,p)=>a+p.trValor,0);
+  const qtd=parcelas.length;
+
+  document.getElementById('m-parcela1').textContent=fmt(parcelas[0]?.parcela||0);
+  document.getElementById('m-prazo').textContent   =qtd+' meses';
+  document.getElementById('m-total').textContent   =fmt(totalPago);
+  document.getElementById('m-juros').textContent   =fmt(totalJuros);
+  document.getElementById('m-tr').textContent      =fmt(totalTR);
+  document.getElementById('total-parcelas').textContent=qtd+' parcelas';
+  document.getElementById('prazo-info').textContent=qtd+' meses';
+
+  // Tabela detalhada
+  const tbody=document.getElementById('tabela-body');
+  tbody.innerHTML='';
+  parcelas.forEach(p=>{
+    const tr2=document.createElement('tr');
+    if(p.isExtra) tr2.className='amort-row';
+    tr2.innerHTML=`
+      <td>${p.n}${p.isExtra?'<span class="badge">Extra</span>':''}</td>
+      <td>${fmtN(p.saldoAntes)}</td>
+      <td>${fmtN(p.trValor)}</td>
+      <td>${fmtN(p.juros)}</td>
+      <td>${fmtN(p.amort)}</td>
+      <td>${p.extraVal>0?'<strong style="color:#4A90D9">'+fmtN(p.extraVal)+'</strong>':'—'}</td>
+      <td><strong>${fmtN(p.parcela+p.extraVal)}</strong></td>
+      <td>${fmtN(p.saldoRestante)}</td>
+    `;
+    tbody.appendChild(tr2);
+  });
+
+  // Gráfico principal
+  const step=Math.max(1,Math.floor(qtd/80));
+  const labels=[],sSaldo=[],sJuros=[],sAmort=[];
+  for(let k=0;k<parcelas.length;k+=step){
+    labels.push(parcelas[k].n);
+    sSaldo.push(Math.round(parcelas[k].saldoRestante));
+    sJuros.push(Math.round(parcelas[k].juros));
+    sAmort.push(Math.round(parcelas[k].amort));
+  }
+  if(graficoInst) graficoInst.destroy();
+  graficoInst=new Chart(document.getElementById('grafico'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Saldo devedor',data:sSaldo,borderColor:'#4A90D9',backgroundColor:'rgba(74,144,217,0.12)',borderWidth:2,pointRadius:0,fill:true},
+      {label:'Juros',data:sJuros,borderColor:'#E06060',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,borderDash:[5,4]},
+      {label:'Amortização',data:sAmort,borderColor:'#6AAF36',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,borderDash:[3,4]}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{label:c=>c.dataset.label+': R$ '+c.parsed.y.toLocaleString('pt-BR')}}},
+      scales:{
+        x:{ticks:{font:{size:11},color:'#6a6864',maxTicksLimit:12},grid:{color:'rgba(255,255,255,0.05)'}},
+        y:{ticks:{font:{size:11},color:'#6a6864',callback:v=>'R$'+(v>=1000?Math.round(v/1000)+'k':Math.round(v))},grid:{color:'rgba(255,255,255,0.05)'}}
+      }
+    }
+  });
+}
+
+// ── Relatórios ────────────────────────────────
+function abrirRelatorio(aba) {
+  if(!dadosBase||ultimaTabela.length===0){ alert('Calcule o empréstimo primeiro.'); return; }
+  preencherRelatorios();
+  document.getElementById('modal-overlay').classList.add('open');
+  trocarAba(aba||'resumo');
+}
+function fecharRelatorio(){ document.getElementById('modal-overlay').classList.remove('open'); }
+function fecharModalFora(e){ if(e.target===document.getElementById('modal-overlay')) fecharRelatorio(); }
+
+function trocarAba(aba) {
+  const abas=['resumo','anual','amortizacoes','comparativo'];
+  document.querySelectorAll('.rtab').forEach((b,i)=>b.classList.toggle('active',abas[i]===aba));
+  document.querySelectorAll('.rpanel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+aba).classList.add('active');
+}
+
+function preencherRelatorios() {
+  const {principal,prazo,taxa,tr,sistema}=dadosBase;
+  const parc=ultimaTabela;
+  const sem =calcularTabela(principal,prazo,taxa,tr,sistema,[]);
+
+  const totalPago =parc.reduce((a,p)=>a+p.parcela,0);
+  const totalJuros=parc.reduce((a,p)=>a+p.juros,0);
+  const totalTR   =parc.reduce((a,p)=>a+p.trValor,0);
+  const totalExtra=listaAmorts.reduce((a,x)=>a+x.valor,0);
+  const qtd=parc.length;
+  const totalSem =sem.reduce((a,p)=>a+p.parcela,0);
+  const totalJSem=sem.reduce((a,p)=>a+p.juros,0);
+  const totalTRSem=sem.reduce((a,p)=>a+p.trValor,0);
+  const prazoSem =sem.length;
+  const economia =totalSem-(totalPago+totalExtra);
+
+  document.getElementById('modal-titulo').textContent=`Relatório — ${sistema==='price'?'Price':'SAC'} + TR`;
+  document.getElementById('modal-sub').textContent=
+    `Principal: ${fmt(principal)} · Prazo original: ${prazo} meses · Juros: ${(taxa*100).toFixed(2)}% a.m. · TR: ${(tr*100).toFixed(2)}% a.m.`;
+
+  // ── RESUMO EXECUTIVO ───────────────────────
+  document.getElementById('rg-cards').innerHTML=`
+    <div class="rcard"><div class="rl">Principal</div><div class="rv blue">${fmtK(principal)}</div></div>
+    <div class="rcard"><div class="rl">Prazo efetivo</div><div class="rv">${qtd} meses</div></div>
+    <div class="rcard"><div class="rl">1ª parcela</div><div class="rv blue">${fmt(parc[0]?.parcela||0)}</div></div>
+    <div class="rcard"><div class="rl">Total parcelas</div><div class="rv red">${fmtK(totalPago)}</div></div>
+    <div class="rcard"><div class="rl">Amort. extraordinárias</div><div class="rv amber">${fmtK(totalExtra)}</div></div>
+    <div class="rcard"><div class="rl">Custo total</div><div class="rv red">${fmtK(totalPago+totalExtra)}</div></div>
+    <div class="rcard"><div class="rl">Total juros</div><div class="rv red">${fmtK(totalJuros)}</div></div>
+    <div class="rcard"><div class="rl">Total TR</div><div class="rv amber">${fmtK(totalTR)}</div></div>
+    <div class="rcard"><div class="rl">Economia vs. sem amort.</div><div class="rv green">${fmtK(Math.max(0,economia))}</div></div>
+  `;
+
+  setTimeout(()=>{
+    if(graficoPizza) graficoPizza.destroy();
+    const c=document.getElementById('grafico-pizza');
+    if(!c) return;
+    graficoPizza=new Chart(c,{
+      type:'doughnut',
+      data:{
+        labels:['Principal','Juros','TR','Amort. Extra'],
+        datasets:[{data:[principal,totalJuros,totalTR,totalExtra].map(v=>Math.round(v)),backgroundColor:['#4A90D9','#E06060','#D4892A','#6AAF36'],borderWidth:0}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'right',labels:{color:'#a09e98',font:{size:11},boxWidth:12}}},
+        cutout:'60%'
+      }
+    });
+  },120);
+
+  const custoTotal=totalPago+totalExtra;
+  document.getElementById('tbl-indicadores').innerHTML=`
+    <thead><tr><th>Indicador</th><th>Valor</th><th>Observação</th></tr></thead>
+    <tbody>
+      <tr><td>Custo efetivo total</td><td>${fmtK(custoTotal)}</td><td>${((custoTotal/principal-1)*100).toFixed(1)}% sobre o principal</td></tr>
+      <tr><td>Participação dos juros</td><td>${fmtK(totalJuros)}</td><td>${(totalJuros/custoTotal*100).toFixed(1)}% do custo total</td></tr>
+      <tr><td>Participação da TR</td><td>${fmtK(totalTR)}</td><td>${(totalTR/custoTotal*100).toFixed(1)}% do custo total</td></tr>
+      <tr><td>Amortizações extraordinárias</td><td>${fmtK(totalExtra)}</td><td>${listaAmorts.length} evento(s)</td></tr>
+      <tr class="hi"><td>Economia obtida</td><td>${fmtK(Math.max(0,economia))}</td><td>${economia>0?((economia/totalSem)*100).toFixed(1)+'% do custo sem amort.':'Sem amortizações extras'}</td></tr>
+    </tbody>
+  `;
+
+  // ── EVOLUÇÃO ANUAL ─────────────────────────
+  const porAno={};
+  parc.forEach(p=>{
+    const ano=Math.ceil(p.n/12);
+    if(!porAno[ano]) porAno[ano]={parc:0,juros:0,amort:0,tr:0,extra:0,saldo:0,meses:0};
+    porAno[ano].parc +=p.parcela;
+    porAno[ano].juros+=p.juros;
+    porAno[ano].amort+=p.amort;
+    porAno[ano].tr   +=p.trValor;
+    porAno[ano].extra+=p.extraVal;
+    porAno[ano].saldo =p.saldoRestante;
+    porAno[ano].meses++;
+  });
+  let htmlA=`<thead><tr><th>Ano</th><th>Meses</th><th>Parcelas pagas</th><th>Juros</th><th>TR</th><th>Amort. normal</th><th>Amort. extra</th><th>Saldo devedor</th></tr></thead><tbody>`;
+  let totP=0,totJ=0,totT=0,totA=0,totE=0;
+  Object.entries(porAno).forEach(([ano,d])=>{
+    totP+=d.parc;totJ+=d.juros;totT+=d.tr;totA+=d.amort;totE+=d.extra;
+    htmlA+=`<tr ${d.extra>0?'class="hi"':''}>
+      <td>${ano}º</td><td>${d.meses}</td><td>${fmtN(d.parc)}</td><td>${fmtN(d.juros)}</td>
+      <td>${fmtN(d.tr)}</td><td>${fmtN(d.amort)}</td>
+      <td>${d.extra>0?'<strong style="color:#4A90D9">'+fmtN(d.extra)+'</strong>':'—'}</td>
+      <td>${fmtN(d.saldo)}</td>
+    </tr>`;
+  });
+  htmlA+=`<tr class="total"><td colspan="2">Total</td><td>${fmtN(totP)}</td><td>${fmtN(totJ)}</td><td>${fmtN(totT)}</td><td>${fmtN(totA)}</td><td>${fmtN(totE)}</td><td>—</td></tr></tbody>`;
+  document.getElementById('tbl-anual').innerHTML=htmlA;
+
+  // ── AMORTIZAÇÕES ──────────────────────────
+  if(listaAmorts.length===0){
+    document.getElementById('tbl-amortizacoes').innerHTML='<tbody><tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">Nenhuma amortização extraordinária registrada.</td></tr></tbody>';
+  } else {
+    const semPorParcela={};
+    sem.forEach(p=>semPorParcela[p.n]=p);
+    let htmlAm=`<thead><tr><th>Parcela</th><th>Modo</th><th>Valor extra</th><th>Saldo antes</th><th>Saldo após extra</th><th>Redução de prazo</th></tr></thead><tbody>`;
+    listaAmorts.forEach(a=>{
+      const px=parc.find(p=>p.n===a.parcela);
+      const sA=px?fmtN(px.saldoAntes):'—';
+      const sD=px?fmtN(px.saldoRestante):'—';
+      htmlAm+=`<tr class="hi">
+        <td>${a.parcela}ª parcela</td>
+        <td>${a.modo==='prazo'?'Reduz prazo':'Reduz parcela'}</td>
+        <td><strong>${fmt(a.valor)}</strong></td>
+        <td>${sA}</td><td>${sD}</td>
+        <td>${a.modo==='prazo'?`${prazoSem-qtd} meses`:'—'}</td>
+      </tr>`;
+    });
+    htmlAm+='</tbody>';
+    document.getElementById('tbl-amortizacoes').innerHTML=htmlAm;
+  }
+
+  setTimeout(()=>{
+    if(graficoComp) graficoComp.destroy();
+    const c2=document.getElementById('grafico-comp');
+    if(!c2) return;
+    const stepC=Math.max(1,Math.floor(Math.max(parc.length,sem.length)/60));
+    const labC=[],sC=[],sSA=[];
+    const maxN=Math.max(parc.length,sem.length);
+    for(let k=0;k<maxN;k+=stepC){
+      labC.push(k+1);
+      sC.push(parc[k]?Math.round(parc[k].saldoRestante):0);
+      sSA.push(sem[k]?Math.round(sem[k].saldoRestante):0);
+    }
+    graficoComp=new Chart(c2,{
+      type:'line',
+      data:{labels:labC,datasets:[
+        {label:'Com amortizações',data:sC,borderColor:'#6AAF36',backgroundColor:'rgba(106,175,54,0.1)',borderWidth:2,pointRadius:0,fill:true},
+        {label:'Sem amortizações',data:sSA,borderColor:'#E06060',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,borderDash:[5,4]}
+      ]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:'#a09e98',font:{size:11}}},tooltip:{mode:'index',intersect:false,callbacks:{label:c=>c.dataset.label+': R$ '+c.parsed.y.toLocaleString('pt-BR')}}},
+        scales:{
+          x:{ticks:{font:{size:11},color:'#6a6864',maxTicksLimit:10},grid:{color:'rgba(255,255,255,0.05)'}},
+          y:{ticks:{font:{size:11},color:'#6a6864',callback:v=>'R$'+(v>=1000?Math.round(v/1000)+'k':v)},grid:{color:'rgba(255,255,255,0.05)'}}
+        }
+      }
+    });
+  },150);
+
+  // ── COMPARATIVO ───────────────────────────
+  document.getElementById('rg-comp').innerHTML=`
+    <div class="rcard"><div class="rl">Prazo sem amort.</div><div class="rv">${prazoSem} meses</div></div>
+    <div class="rcard"><div class="rl">Prazo com amort.</div><div class="rv green">${qtd} meses</div></div>
+    <div class="rcard"><div class="rl">Redução de prazo</div><div class="rv green">${Math.max(0,prazoSem-qtd)} meses</div></div>
+    <div class="rcard"><div class="rl">Total sem amort.</div><div class="rv red">${fmtK(totalSem)}</div></div>
+    <div class="rcard"><div class="rl">Total com amort.</div><div class="rv amber">${fmtK(totalPago+totalExtra)}</div></div>
+    <div class="rcard"><div class="rl">Economia total</div><div class="rv green">${fmtK(Math.max(0,economia))}</div></div>
+    <div class="rcard"><div class="rl">Juros sem amort.</div><div class="rv red">${fmtK(totalJSem)}</div></div>
+    <div class="rcard"><div class="rl">Juros com amort.</div><div class="rv green">${fmtK(totalJuros)}</div></div>
+    <div class="rcard"><div class="rl">Economia em juros</div><div class="rv green">${fmtK(Math.max(0,totalJSem-totalJuros))}</div></div>
+  `;
+
+  const anos=Math.max(Math.ceil(prazoSem/12),Math.ceil(qtd/12));
+  let htmlC=`<thead><tr><th>Período</th><th>Saldo sem amort.</th><th>Saldo com amort.</th><th>Diferença</th></tr></thead><tbody>`;
+  for(let ano=1;ano<=anos;ano++){
+    const idx=ano*12-1;
+    const sS=sem[idx]?.saldoRestante??0;
+    const sC2=parc[idx]?.saldoRestante??0;
+    const diff=sS-sC2;
+    htmlC+=`<tr ${diff>1?'class="hi"':''}>
+      <td>${ano}º ano</td><td>${fmtN(sS)}</td><td>${fmtN(sC2)}</td>
+      <td style="color:${diff>1?'#6AAF36':'#E06060'}">${diff>=0?'+':''}${fmtN(diff)}</td>
+    </tr>`;
+  }
+  htmlC+='</tbody>';
+  document.getElementById('tbl-comp').innerHTML=htmlC;
+}
+
+// ── Init — restaura estado salvo ─────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const tinha = carregarEstado();
+  if(tinha) {
+    // Recalcular mantendo amortizações restauradas
+    calcular(true);
+    // Mostrar banner de restauração
+    const banner = document.getElementById('banner-restaurado');
+    if(banner) {
+      banner.style.display='flex';
+      setTimeout(()=>{ banner.style.opacity='0'; setTimeout(()=>{ banner.style.display='none'; }, 400); }, 4000);
+    }
+  } else {
+    calcular();
+  }
+});
+</script>
+</body>
+</html>
